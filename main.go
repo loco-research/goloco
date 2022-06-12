@@ -109,54 +109,55 @@ type CheckinReq struct {
 	NetworkOperator string `bson:"MCCMNC"`
 }
 
-func performPacket() func(tempData []byte) {
-	var currentData = make([]byte, 0)
-	var currentLen = 0
+func performPacket(tempData []byte, currentData *[]byte, currentLen *int) {
+	*currentData = append(*currentData, tempData...)
 
-	return func(tempData []byte) {
-		currentData = append(currentData, tempData...)
+	if len(*currentData) >= 22 && *currentLen < 1 {
+		*currentLen = int(binary.LittleEndian.Uint32((*currentData)[18:][:4])) + 22
+	}
 
-		if len(currentData) >= 22 && currentLen < 1 {
-			currentLen = int(binary.LittleEndian.Uint32(currentData[18:][:4])) + 22
-		}
+	if *currentLen > 0 && len(*currentData) >= *currentLen {
+		var bodyData = (*currentData)[22:][:(*currentLen - 22)]
+		var doc bson.D
+		err := bson.Unmarshal(bodyData, &doc)
+		checkError(err)
 
-		if currentLen > 0 && len(currentData) >= currentLen {
-			var bodyData = currentData[22:][:(currentLen - 22)]
-			var doc bson.D
-			err := bson.Unmarshal(bodyData, &doc)
-			checkError(err)
+		go onPacket(doc)
 
-			go onPacket(doc)
+		slicedPacket := (*currentData)[*currentLen:]
 
-			currentData = currentData[currentLen:]
-			currentLen = 0
-		}
+		*currentData = make([]byte, 0)
+		*currentLen = 0
+
+		performPacket(slicedPacket, currentData, currentLen)
 	}
 }
 
 func TLSreceive(conn *tls.Conn) {
-	perform := performPacket()
+	var currentData = make([]byte, 0)
+	var currentLen = 0
 
 	for {
 		var tempData = make([]byte, 256)
 		c, err := conn.Read(tempData)
 		checkError(err)
 		tempData = tempData[:c]
-		perform(tempData)
+		performPacket(tempData, &currentData, &currentLen)
 	}
 }
 
 func TCPreceive(conn net.Conn, aesKey []byte) {
 	var currentData = make([]byte, 0)
 	var currentLen = 0
-	perform := performPacket()
+
+	var currentData2 = make([]byte, 0)
+	var currentLen2 = 0
 
 	for {
 		var tempData = make([]byte, 256)
 		c, err := conn.Read(tempData)
 		checkError(err)
 		tempData = tempData[:c]
-		fmt.Println(c)
 
 		currentData = append(currentData, tempData...)
 
@@ -164,23 +165,25 @@ func TCPreceive(conn net.Conn, aesKey []byte) {
 			currentLen = int(binary.LittleEndian.Uint32(currentData[:4])) + 4
 		}
 
-		if currentLen > 0 && len(currentData) >= (currentLen) {
+		if currentLen > 0 && len(currentData) >= currentLen {
 			bodyData := currentData[20:][:(currentLen - 20)]
 			tempIV := currentData[4:][:16]
 			decryptedData := decryptAES(bodyData, aesKey, tempIV)
-			go perform(decryptedData)
+			go performPacket(decryptedData, &currentData2, &currentLen2)
 
-			currentData = currentData[(currentLen - 20):]
+			currentData = currentData[currentLen:]
 			currentLen = 0
 		}
 	}
 }
 
-var msg = make(chan bson.D)
+var msg chan bson.D
 
 func onPacket(doc bson.D) {
-	msg <- doc
 	fmt.Println(doc)
+	if msg != nil {
+		msg <- doc
+	}
 }
 
 func booking() bson.D {
