@@ -1,4 +1,4 @@
-module GoLoco
+module github.com/loco-research/goloco
 
 go 1.18
 

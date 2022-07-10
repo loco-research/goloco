@@ -1,7 +1,6 @@
-package main
+package loco
 
 import (
-	"bytes"
 	"crypto/aes"
 	"crypto/cipher"
 	"crypto/rand"
@@ -24,27 +23,6 @@ func checkError(err error) {
 	}
 }
 
-func toByteArray(
-	value interface{},
-	endianType string,
-) []byte {
-	var buffer = new(bytes.Buffer)
-
-	if endianType == "little" {
-		err := binary.Write(buffer, binary.LittleEndian, value)
-		if err != nil {
-			return nil
-		}
-	} else if endianType == "big" {
-		err := binary.Write(buffer, binary.BigEndian, value)
-		if err != nil {
-			return nil
-		}
-	}
-
-	return buffer.Bytes()
-}
-
 func getPacketHeader(
 	packetID int,
 	statusCode int,
@@ -54,8 +32,8 @@ func getPacketHeader(
 ) []byte {
 	var byteArray = make([]byte, 0)
 
-	byteArray = append(byteArray, toByteArray(uint32(packetID), "little")...)
-	byteArray = append(byteArray, toByteArray(uint16(statusCode), "little")...)
+	byteArray = append(byteArray, toByteArray(uint32(packetID), binary.LittleEndian)...)
+	byteArray = append(byteArray, toByteArray(uint16(statusCode), binary.LittleEndian)...)
 
 	var methodNameLen = len(methodName)
 
@@ -290,6 +268,5 @@ func decryptAES(plain, key, iv []byte) (decrypted []byte) {
 func main() {
 	checkinRes := checkin()
 	fmt.Println(checkinRes)
-	for {
-	}
+	select {}
 }
