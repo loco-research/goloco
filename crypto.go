@@ -3,7 +3,6 @@ package loco
 import (
 	"crypto/aes"
 	"crypto/cipher"
-	"crypto/rsa"
 	"fmt"
 )
 
@@ -11,12 +10,6 @@ type FrameCryptoInterface interface {
 	Initialize(key []byte) error
 	Encrypt([]byte) ([]byte, error)
 	Decrypt([]byte) ([]byte, error)
-	GetType() int
-}
-
-type FrameKeyExchangeInterface interface {
-	Initialize(publicKey rsa.PublicKey) error
-	Encrypt([]byte) ([]byte, error)
 	GetType() int
 }
 
