@@ -12,10 +12,11 @@ type Session struct {
 	Connection       net.Conn
 	Crypto           FrameCryptoInterface
 	Logger           *log.Logger
+	Handler          map[string][]func(*Frame) error
 	responseReceiver map[uint32]chan *Frame
 }
 
-func (s *Session) Connect(host string, port int) error {
+func (s *Session) ConnectSocket(host string, port int) error {
 	var err error
 	s.PacketId = 0
 	s.Connection, err = net.Dial("tcp", fmt.Sprintf("%s:%d", host, port))
@@ -25,7 +26,7 @@ func (s *Session) Connect(host string, port int) error {
 	return nil
 }
 
-func (s *Session) Disconnect() error {
+func (s *Session) DisconnectSocket() error {
 	err := s.Connection.Close()
 	if err != nil {
 		return fmt.Errorf("[loco.Session.Disconnect] failed to close connection: %w", err)
@@ -88,8 +89,26 @@ func (s *Session) Receive() error {
 		c, ok := s.responseReceiver[frame.Header.PacketId]
 		if ok {
 			c <- frame
+			continue
 		}
 		// TODO: handle response receiver
-		return nil
+		handlerArr, ok := s.Handler[frame.Header.Method]
+		if ok {
+			for _, handler := range handlerArr {
+				err = handler(frame)
+				if err != nil {
+					s.Logger.Print(fmt.Sprintf("[Receiver] failed to handle frame: %s", err))
+				}
+			}
+		}
+		handlerArr, ok = s.Handler["*"]
+		if ok {
+			for _, handler := range handlerArr {
+				err = handler(frame)
+				if err != nil {
+					s.Logger.Print(fmt.Sprintf("[Receiver] failed to handle frame: %s", err))
+				}
+			}
+		}
 	}
 }

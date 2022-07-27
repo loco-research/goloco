@@ -7,19 +7,23 @@ import (
 )
 
 type Frame struct {
-	Header struct {
-		Method     string
-		PacketId   uint32
-		StatusCode uint16
-		BodyType   uint8
-		BodyLength uint32
-	}
-	Body any
+	Header FrameHeader
+	Body   any
+}
+
+type FrameHeader struct {
+	Method     string
+	PacketId   uint32
+	StatusCode uint16
+	BodyType   uint8
+	BodyLength uint32 // Frame body length, when requesting, it will be calculated from Body automatically, if value was set, will be ignored
 }
 
 func (f *Frame) serializeHeader() []byte {
 	var header []byte
 
+	header = append(header, toByteArray(f.Header.PacketId)...)
+	header = append(header, toByteArray(f.Header.StatusCode)...)
 	for i := 0; i < 11; i++ {
 		if len(f.Header.Method) > i {
 			header = append(header, f.Header.Method[i])
@@ -27,9 +31,6 @@ func (f *Frame) serializeHeader() []byte {
 			header = append(header, 0)
 		}
 	}
-	header = append(header, toByteArray(f.Header.PacketId)...)
-	header = append(header, toByteArray(f.Header.StatusCode)...)
-
 	header = append(header, f.Header.BodyType)
 	header = append(header, toByteArray(f.Header.BodyLength)...)
 
@@ -54,6 +55,7 @@ func (f *Frame) Serialize() ([]byte, error) {
 	if err != nil {
 		return nil, fmt.Errorf("[Frame.Serialize] cannot marshal body : %w", err)
 	}
+	f.Header.BodyLength = uint32(len(bsonBody))
 	frame = append(frame, f.serializeHeader()...)
 	frame = append(frame, bsonBody...)
 	return frame, nil

@@ -36,9 +36,11 @@ func (f *FrameCryptoCFB) Encrypt(plainFrame []byte) (encryptedFrame []byte, cryp
 		}
 	}()
 	iv := randomByte(f.block.BlockSize())
-	encryptedFrame = append(encryptedFrame, toByteArray(len(plainFrame)+16)...)
+	encryptedFrame = append(encryptedFrame, toByteArray(uint32(len(plainFrame)+16))...)
 	encryptedFrame = append(encryptedFrame, iv...)
-	cipher.NewCFBEncrypter(f.block, iv).XORKeyStream(encryptedFrame, plainFrame)
+	encryptedStream := make([]byte, len(plainFrame))
+	cipher.NewCFBEncrypter(f.block, iv).XORKeyStream(encryptedStream, plainFrame)
+	encryptedFrame = append(encryptedFrame, encryptedStream...)
 	return encryptedFrame, nil
 }
 
