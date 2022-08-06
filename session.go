@@ -3,6 +3,7 @@ package loco
 import (
 	"encoding/binary"
 	"fmt"
+	"go.mongodb.org/mongo-driver/bson"
 	"log"
 	"net"
 )
@@ -81,7 +82,7 @@ func (s *Session) Receive() error {
 			s.Logger.Print(fmt.Sprintf("[Receiver] failed to decrypt frame: %s", err))
 			continue
 		}
-		err = frame.Deserialize(decryptedFrame)
+		err = frame.Deserialize(decryptedFrame, &bson.M{})
 		if err != nil {
 			s.Logger.Print(fmt.Sprintf("[Receiver] failed to deserialize frame: %s", err))
 			continue
