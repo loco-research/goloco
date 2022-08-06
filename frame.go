@@ -8,7 +8,7 @@ import (
 
 type Frame struct {
 	Header FrameHeader
-	Body   *bson.M
+	Body   any
 }
 
 type FrameHeader struct {
@@ -61,14 +61,18 @@ func (f *Frame) Serialize() ([]byte, error) {
 	return frame, nil
 }
 
-func (f *Frame) Deserialize(decryptedFrame []byte) error {
+func (f *Frame) Deserialize(decryptedFrame []byte, unmarshalStruct any) error {
 	if len(decryptedFrame) < 23 {
 		return fmt.Errorf("[Frame.Deserialize] cannot deserialize frame: too short")
 	}
 	if err := f.deserializeHeader(decryptedFrame[0:22]); err != nil {
 		return fmt.Errorf("[Frame.Deserialize] cannot deserialize header: %w", err)
 	}
-	f.Body = &bson.M{}
+	if unmarshalStruct == nil {
+		f.Body = &bson.M{}
+	} else {
+		f.Body = unmarshalStruct
+	}
 	if err := bson.Unmarshal(decryptedFrame[22:binary.LittleEndian.Uint32(decryptedFrame[22:26])+22], f.Body); err != nil {
 		return fmt.Errorf("[Frame.Deserialize] cannot unmarshal body: %w", err)
 	}
