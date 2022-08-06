@@ -41,10 +41,10 @@ func (f *Frame) deserializeHeader(header []byte) (deserializeError error) {
 	if len(header) < 22 {
 		return fmt.Errorf("[Frame.deserializeHeader] cannot deserialize header: too short")
 	}
-	f.Header.Method = string(header[0:11])
-	f.Header.PacketId = binary.LittleEndian.Uint32(header[11:15])
-	f.Header.StatusCode = binary.LittleEndian.Uint16(header[15:17])
-	f.Header.BodyType = header[17]
+	f.Header.PacketId = binary.LittleEndian.Uint32(header[0:4])
+	f.Header.StatusCode = binary.LittleEndian.Uint16(header[4:6])
+	f.Header.Method = string(header[6:17])
+	f.Header.BodyType = header[18]
 	f.Header.BodyLength = binary.LittleEndian.Uint32(header[18:22])
 	return nil
 }

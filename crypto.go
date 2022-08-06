@@ -117,7 +117,7 @@ func (f *FrameCryptoCBC) Decrypt(encryptedFrame []byte) (decryptedFrame []byte, 
 }
 
 func (f *FrameCryptoCBC) GetType() int {
-	return 3
+	return 1
 }
 
 func (f *FrameCryptoCBC) GetKey() []byte {
