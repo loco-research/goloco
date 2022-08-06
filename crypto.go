@@ -53,7 +53,7 @@ func (f *FrameCryptoCFB) Decrypt(encryptedFrame []byte) (decryptedFrame []byte, 
 		}
 	}()
 	decryptedFrame = make([]byte, len(encryptedFrame))
-	cipher.NewCFBDecrypter(f.block, encryptedFrame[4:20]).XORKeyStream(decryptedFrame, encryptedFrame[20:])
+	cipher.NewCFBDecrypter(f.block, encryptedFrame[0:16]).XORKeyStream(decryptedFrame, encryptedFrame[20:])
 	return decryptedFrame, nil
 }
 
@@ -108,7 +108,7 @@ func (f *FrameCryptoCBC) Decrypt(encryptedFrame []byte) (decryptedFrame []byte, 
 		}
 	}()
 	decryptedFrame = make([]byte, len(encryptedFrame))
-	cipher.NewCFBDecrypter(f.block, encryptedFrame[4:20]).XORKeyStream(decryptedFrame, encryptedFrame)
+	cipher.NewCFBDecrypter(f.block, encryptedFrame[0:16]).XORKeyStream(decryptedFrame, encryptedFrame)
 	decryptedFrame, err := pkcs7strip(decryptedFrame, f.block.BlockSize())
 	if err != nil {
 		return nil, err
