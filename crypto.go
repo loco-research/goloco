@@ -39,7 +39,7 @@ func (f *FrameCryptoCFB) Encrypt(plainFrame []byte) (encryptedFrame []byte, cryp
 	iv := randomByte(f.block.BlockSize())
 	encryptedFrame = append(encryptedFrame, toByteArray(uint32(len(plainFrame)+16))...)
 	encryptedFrame = append(encryptedFrame, iv...)
-	encryptedStream := make([]byte, len(plainFrame))
+	encryptedStream := make([]byte, len(plainFrame)-16)
 	cipher.NewCFBEncrypter(f.block, iv).XORKeyStream(encryptedStream, plainFrame)
 	encryptedFrame = append(encryptedFrame, encryptedStream...)
 	return encryptedFrame, nil
@@ -53,7 +53,7 @@ func (f *FrameCryptoCFB) Decrypt(encryptedFrame []byte) (decryptedFrame []byte, 
 		}
 	}()
 	decryptedFrame = make([]byte, len(encryptedFrame))
-	cipher.NewCFBDecrypter(f.block, encryptedFrame[0:16]).XORKeyStream(decryptedFrame, encryptedFrame[20:])
+	cipher.NewCFBDecrypter(f.block, encryptedFrame[0:16]).XORKeyStream(decryptedFrame, encryptedFrame[16:])
 	return decryptedFrame, nil
 }
 
@@ -107,8 +107,8 @@ func (f *FrameCryptoCBC) Decrypt(encryptedFrame []byte) (decryptedFrame []byte, 
 			cryptoError = fmt.Errorf("[FrameCryptoCBC.Decrypt] Panic : %s", r)
 		}
 	}()
-	decryptedFrame = make([]byte, len(encryptedFrame))
-	cipher.NewCFBDecrypter(f.block, encryptedFrame[0:16]).XORKeyStream(decryptedFrame, encryptedFrame)
+	decryptedFrame = make([]byte, len(encryptedFrame)-16)
+	cipher.NewCFBDecrypter(f.block, encryptedFrame[0:16]).XORKeyStream(decryptedFrame, encryptedFrame[16:])
 	decryptedFrame, err := pkcs7strip(decryptedFrame, f.block.BlockSize())
 	if err != nil {
 		return nil, err
