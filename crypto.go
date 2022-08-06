@@ -11,6 +11,7 @@ type FrameCryptoInterface interface {
 	Encrypt([]byte) ([]byte, error)
 	Decrypt([]byte) ([]byte, error)
 	GetType() int
+	GetKey() []byte
 }
 
 type FrameCryptoCFB struct {
@@ -44,15 +45,24 @@ func (f *FrameCryptoCFB) Encrypt(plainFrame []byte) (encryptedFrame []byte, cryp
 	return encryptedFrame, nil
 }
 
-func (f *FrameCryptoCFB) Decrypt(encryptedFrame []byte) ([]byte, error) {
-	var decryptedFrame []byte
-	iv := encryptedFrame[4:20]
-	cipher.NewCFBDecrypter(f.block, iv).XORKeyStream(decryptedFrame, encryptedFrame[20:])
+func (f *FrameCryptoCFB) Decrypt(encryptedFrame []byte) (decryptedFrame []byte, cryptoError error) {
+	defer func() {
+		if r := recover(); r != nil {
+			decryptedFrame = nil
+			cryptoError = fmt.Errorf("[FrameCryptoCBC.Decrypt] Panic : %s", r)
+		}
+	}()
+	decryptedFrame = make([]byte, len(encryptedFrame))
+	cipher.NewCFBDecrypter(f.block, encryptedFrame[4:20]).XORKeyStream(decryptedFrame, encryptedFrame[20:])
 	return decryptedFrame, nil
 }
 
 func (f *FrameCryptoCFB) GetType() int {
 	return 2
+}
+
+func (f *FrameCryptoCFB) GetKey() []byte {
+	return f.key
 }
 
 type FrameCryptoCBC struct {
@@ -77,7 +87,7 @@ func (f *FrameCryptoCBC) Encrypt(plainFrame []byte) (encryptedFrame []byte, cryp
 			cryptoError = fmt.Errorf("[FrameCryptoCBC.Encrypt] Panic : %s", r)
 		}
 	}()
-	var temp []byte
+	temp := make([]byte, len(plainFrame))
 	iv := randomByte(f.block.BlockSize())
 	cipher.NewCBCEncrypter(f.block, iv).CryptBlocks(temp, plainFrame)
 	temp, err := pkcs7pad(temp, f.block.BlockSize())
@@ -97,11 +107,19 @@ func (f *FrameCryptoCBC) Decrypt(encryptedFrame []byte) (decryptedFrame []byte, 
 			cryptoError = fmt.Errorf("[FrameCryptoCBC.Decrypt] Panic : %s", r)
 		}
 	}()
-	iv := encryptedFrame[4:20]
-	cipher.NewCFBDecrypter(f.block, iv).XORKeyStream(decryptedFrame, encryptedFrame)
+	decryptedFrame = make([]byte, len(encryptedFrame))
+	cipher.NewCFBDecrypter(f.block, encryptedFrame[4:20]).XORKeyStream(decryptedFrame, encryptedFrame)
 	decryptedFrame, err := pkcs7strip(decryptedFrame, f.block.BlockSize())
 	if err != nil {
 		return nil, err
 	}
 	return decryptedFrame, nil
+}
+
+func (f *FrameCryptoCBC) GetType() int {
+	return 3
+}
+
+func (f *FrameCryptoCBC) GetKey() []byte {
+	return f.key
 }
